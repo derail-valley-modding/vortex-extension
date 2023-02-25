@@ -1,0 +1,45 @@
+{
+  "name": "sample-extension",
+  "version": "0.0.1",
+  "description": "Sample",
+  "main": "./out/index.js",
+  "repository": "",
+  "scripts": {
+    "copyassets": "node copyAssets.js",
+    "webpack": "node ./node_modules/webpack/bin/webpack --config webpack.config.js --progress",
+    "bundle7z": "7z a -t7z distributable-extension.7z .\\dist\\*.*",
+    "build": "npm run webpack && extractInfo",
+    "copyplugin": "yarn copyassets && node copyplugin.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix"
+  },
+  "author": "",
+  "license": "GPL-3.0",
+  "babel": {
+    "presets": [
+      "es2015"
+    ]
+  },
+  "devDependencies": {
+    "7z-bin": "Nexus-Mods/7z-bin",
+    "@types/node": "^15.12.4",
+    "@types/react": "^17.0.11",
+    "@types/redux": "^3.6.0",
+    "@types/redux-thunk": "^2.1.0",
+    "@typescript-eslint/eslint-plugin": "^5.32.0",
+    "@typescript-eslint/parser": "^5.32.0",
+    "bluebird": "^3.7.2",
+    "eslint": "^8.21.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "eslint-plugin-react": "^7.30.1",
+    "i18next": "^19.0.1",
+    "react": "^17.0.2",
+    "react-bootstrap": "^0.33.0",
+    "ts-loader": "^9.2.6",
+    "typescript": "^4.4.3",
+    "vortex-api": "Nexus-Mods/vortex-api",
+    "webpack": "^5.57.1",
+    "webpack-cli": "^4.8.0"
+  }
+}

@@ -1,0 +1,1 @@
+Stuff like gameart.jpg, logos, etc - things you want distributed alongside your extension (will be placed at the same level as index.js)
