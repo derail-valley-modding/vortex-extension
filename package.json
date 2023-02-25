@@ -1,7 +1,7 @@
 {
-  "name": "sample-extension",
+  "name": "game-derailvalley",
   "version": "0.0.1",
-  "description": "Sample",
+  "description": "Support for Derail Valley",
   "main": "./out/index.js",
   "repository": "",
   "scripts": {
@@ -13,7 +13,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint --fix"
   },
-  "author": "",
+  "author": "Katycat",
   "license": "GPL-3.0",
   "babel": {
     "presets": [
@@ -41,5 +41,8 @@
     "vortex-api": "Nexus-Mods/vortex-api",
     "webpack": "^5.57.1",
     "webpack-cli": "^4.8.0"
+  },
+  "dependencies": {
+    "turbowalk": "^2.2.0"
   }
 }
