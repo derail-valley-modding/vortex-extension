@@ -26,6 +26,9 @@ async function start() {
         const fileEntries = await fs.readdir(path.join(__dirname, 'dist'));
         await fs.mkdir(destination, { recursive: true });
         for (const file of fileEntries) {
+            if (path.extname(file).toLowerCase() === '.map') {
+                continue;
+            }
             await fs.copyFile(path.join(__dirname, 'dist', file), path.join(destination, file));
         }
     } catch (err) {

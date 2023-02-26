@@ -1,5 +1,12 @@
 import path from 'path';
 import { fs, types, util } from 'vortex-api';
+import { IRule } from 'vortex-api/lib/extensions/mod_management/types/IMod';
+
+interface IDvDependency {
+    modId: string,
+    fileId: string,
+    name: string
+}
 
 const DV_NEXUS_ID = 'derailvalley';
 const STEAMAPP_ID = '588030';
@@ -9,14 +16,36 @@ const DV_MOD_JSON = 'info.json';
 const SM_MOD_DIR = 'SkinManagerMod';
 const SM_SKINS_DIR = 'Skins';
 const SKIN_IMAGE_TYPES = ['.jpeg', '.jpg', '.png'];
+const SM_DEPENDENCY: IDvDependency = {
+    modId: '34',
+    fileId: '1564',
+    name: 'Skin Manager'
+};
+
+const NM_XML_CONFIG = 'numbering.xml';
+const NM_DEPENDENCY: IDvDependency = {
+    modId: '197',
+    fileId: '1563',
+    name: 'Number Manager'
+};
 
 const CCL_MOD_DIR = 'DVCustomCarLoader';
 const CCL_CARS_DIR = 'Cars';
 const CCL_CAR_JSON = 'car.json';
+const CCL_DEPENDENCY: IDvDependency = {
+    modId: '324',
+    fileId: '1565',
+    name: 'Custom Car Loader'
+};
 
 const ZSOUNDS_DIR = 'ZSounds';
 const ZSOUNDS_JSON = 'zsounds-config.json';
 const ZSOUNDS_CLIPS = ['.ogg', '.wav'];
+const ZSOUNDS_DEPENDENCY: IDvDependency = {
+    modId: '249',
+    fileId: '1356',
+    name: 'ZSounds'
+};
 
 let missingUMMNotification = undefined;
 let cachedModsDir = undefined;
@@ -53,7 +82,7 @@ function main(context: types.IExtensionContext) {
         }
     });
 
-    context.registerModType('derailvalley-umm', 21, checkGameIsDV, getModsDir, () => Promise.resolve(false), { name: 'DV Code Mod'});
+    context.registerModType('derailvalley-umm', 21, checkGameIsDV, getModsDir, () => Promise.resolve(false), { name: 'Code Modification'});
     context.registerModType('derailvalley-ccl', 22, checkGameIsDV, getModsDir, () => Promise.resolve(false), { name: 'Custom Car/Locomotive'});
     context.registerModType('derailvalley-zsound', 23, checkGameIsDV, getModsDir, () => Promise.resolve(false), { name: 'Sound Replacement'});
     context.registerModType('derailvalley-skin', 25, checkGameIsDV, getModsDir, () => Promise.resolve(false), { name: 'Skin Replacement'});
@@ -121,6 +150,31 @@ function containsDvFile(files: string[], searchName: string, gameId: string): Pr
     });
 }
 
+function addRequirement(instructions: types.IInstruction[], dependency: IDvDependency, versions = '*', reqType = 'requires') {
+    const modRef: types.IModReference & types.IReference = {
+        gameId: DV_NEXUS_ID,
+        repo: {
+            repository: 'nexus',
+            gameId: DV_NEXUS_ID,
+            modId: dependency.modId,
+            fileId: dependency.fileId
+        },
+        description: dependency.name,
+        versionMatch: versions
+    };
+
+    const rule: types.IModRule & IRule = {
+        type: reqType,
+        reference: modRef,
+        comment: dependency.name
+    };
+
+    instructions.push({
+        type: 'rule',
+        rule: rule
+    });
+}
+
 // Default Code Mod
 function checkIfCodeMod(files: string[], gameId: string): Promise<types.ISupportedResult> {
     return containsDvFile(files, DV_MOD_JSON, gameId);
@@ -177,6 +231,7 @@ function checkIfSkin(files: string[], gameId: string): Promise<types.ISupportedR
 function installSkin(files: string[]): Promise<types.IInstallResult> {
 
     const filtered = files.filter(file => !file.endsWith(path.sep));
+    let hasNumberConfig = false;
 
     const instructions: types.IInstruction[] = filtered.map(file => {
         let dest = '';
@@ -184,6 +239,10 @@ function installSkin(files: string[]): Promise<types.IInstallResult> {
             dest = path.join(SM_MOD_DIR, SM_SKINS_DIR, file)
         } else {
             dest = path.join(SM_MOD_DIR, file);
+        }
+
+        if (path.basename(file).toLowerCase() === NM_XML_CONFIG) {
+            hasNumberConfig = true;
         }
 
         return {
@@ -198,6 +257,10 @@ function installSkin(files: string[]): Promise<types.IInstallResult> {
         value: 'derailvalley-skin'
     });
 
+    addRequirement(instructions, SM_DEPENDENCY);
+    if (hasNumberConfig) {
+        addRequirement(instructions, NM_DEPENDENCY, '*', 'recommends');
+    }
 
     return Promise.resolve({ instructions });
 }
@@ -207,7 +270,21 @@ function checkIfCustomCar(files: string[], gameId: string): Promise<types.ISuppo
     return containsDvFile(files, CCL_CAR_JSON, gameId);
 }
 
-function installCustomCar(files: string[]): Promise<types.IInstallResult> {
+async function extractCCLVersion(jsonFile: string): Promise<string> {
+    try
+    {
+        const contents = await fs.readFileAsync(jsonFile);
+        const data = JSON.parse(contents);
+        if (typeof(data.exportVersion) !== 'undefined') {
+            return Promise.resolve('^' + data.exportVersion);
+        }
+        return Promise.resolve('*');
+    } catch {
+        return Promise.resolve('*');
+    }
+}
+
+async function installCustomCar(files: string[], destinationPath: string): Promise<types.IInstallResult> {
     const filtered = files.filter(file => !file.endsWith(path.sep));
 
     const instructions: types.IInstruction[] = filtered.map(file => {
@@ -229,6 +306,12 @@ function installCustomCar(files: string[]): Promise<types.IInstallResult> {
         type: 'setmodtype',
         value: 'derailvalley-ccl'
     });
+
+    let jsonFile = files.find(f => path.basename(f).toLowerCase() === CCL_CAR_JSON);
+    jsonFile = path.join(destinationPath, jsonFile);
+
+    const cclVersion = await extractCCLVersion(jsonFile);
+    addRequirement(instructions, CCL_DEPENDENCY, cclVersion);
 
     return Promise.resolve({ instructions });
 }
@@ -262,6 +345,8 @@ function installZSound(files: string[]): Promise<types.IInstallResult> {
         type: 'setmodtype',
         value: 'derailvalley-zsound'
     });
+
+    addRequirement(instructions, ZSOUNDS_DEPENDENCY);
 
     return Promise.resolve({ instructions });
 }
