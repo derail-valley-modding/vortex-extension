@@ -17,6 +17,8 @@
       "node_modules"
     ],
   "files": [
-    "src/index.ts"
+    "src/index.ts",
+    "src/installers.ts",
+    "src/dv_constants.ts"
   ]
 }

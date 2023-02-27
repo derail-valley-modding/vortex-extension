@@ -1,7 +1,7 @@
 {
   "name": "game-derailvalley",
-  "version": "0.0.1",
-  "description": "Support for Derail Valley",
+  "version": "1.0.0",
+  "description": "Vortex modding support for Derail Valley",
   "main": "./out/index.js",
   "repository": "",
   "scripts": {
