@@ -236,7 +236,7 @@ async function installCustomCar(files: string[], destinationPath: string): Promi
 //---------------------------------------------------------------------------------------------------------------
 async function checkIfZSound(files: string[], gameId: string): Promise<types.ISupportedResult> {
     const result = await containsDvFile(files, ZSOUNDS.configFile, gameId);
-    if (result.supported) {
+    if (!result.supported) {
         return result;
     }
     
