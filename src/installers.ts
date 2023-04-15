@@ -1,7 +1,7 @@
 import path from 'path';
 import { fs, log, types } from 'vortex-api';
 import { IRule } from 'vortex-api/lib/extensions/mod_management/types/IMod';
-import { DV_GAME, SKIN_MANAGER, NUMBER_MANAGER, CCL, ZSOUNDS, IDvDependency } from './dv_constants';
+import { DV_GAME, SKIN_MANAGER, NUMBER_MANAGER, CCL, ZSOUNDS, MAPIFY, IDvDependency } from './dv_constants';
 
 // Mod Installers
 //---------------------------------------------------------------------------------------------------------------
@@ -277,14 +277,75 @@ function installZSound(files: string[]): Promise<types.IInstallResult> {
     return Promise.resolve({ instructions });
 }
 
+// Mapify
+//---------------------------------------------------------------------------------------------------------------
+function checkIfMap(files: string[], gameId: string): Promise<types.ISupportedResult> {
+    return containsDvFile(files, MAPIFY.configFile, gameId);
+}
+
+async function extractMapifyVersion(jsonFile: string | undefined): Promise<string> {
+    if (typeof(jsonFile) !== 'undefined') {
+        try
+        {
+            const contents = await fs.readFileAsync(jsonFile);
+            const data = JSON.parse(contents);
+            if (typeof(data.version) !== 'undefined') {
+                return Promise.resolve('^' + data.version);
+            }
+        } catch {
+            return Promise.resolve('*');
+        }
+    }
+    return Promise.resolve('*');
+}
+
+async function installMap(files: string[], destinationPath: string): Promise<types.IInstallResult> {
+    const filtered = files.filter(file => !file.endsWith(path.sep));
+
+    const instructions: types.IInstruction[] = filtered.map(file => {
+        let targetFile: string;
+
+        if (file.startsWith(MAPIFY.mapsDir)) {
+            // already packed inside Maps
+            targetFile = path.join(MAPIFY.baseDir, file);
+        } else {
+            // need to add Maps folder to start of paths
+            targetFile = path.join(MAPIFY.baseDir, MAPIFY.mapsDir, file);
+        }
+
+        return {
+            type: 'copy',
+            source: file,
+            destination: targetFile
+        };
+    });
+
+    instructions.push({
+        type: 'setmodtype',
+        value: 'derailvalley-map'
+    });
+
+    let jsonFile = files.find(f => path.basename(f).toLowerCase() === MAPIFY.configFile);
+    if (typeof(jsonFile) !== 'undefined') {
+        jsonFile = path.join(destinationPath, jsonFile);
+    }
+
+    const mapifyVersion = await extractMapifyVersion(jsonFile);
+    addRequirement(instructions, MAPIFY.dependency, mapifyVersion);
+
+    return Promise.resolve({ instructions });
+}
+
 export function registerModHandlers(context: types.IExtensionContext, getModsDir: () => string): void {
     context.registerModType('derailvalley-umm', 21, checkGameIsDV, getModsDir, () => Promise.resolve(false), { name: 'Code Mod'});
     context.registerModType('derailvalley-ccl', 22, checkGameIsDV, getModsDir, () => Promise.resolve(false), { name: 'Car/Locomotive'});
     context.registerModType('derailvalley-zsound', 23, checkGameIsDV, getModsDir, () => Promise.resolve(false), { name: 'Sound Replacement'});
     context.registerModType('derailvalley-skin', 25, checkGameIsDV, getModsDir, () => Promise.resolve(false), { name: 'Reskin'});
+    context.registerModType('derailvalley-map', 26, checkGameIsDV, getModsDir, () => Promise.resolve(false), { name: 'Map'});
 
     context.registerInstaller('derailvalley-umm', 21, checkIfCodeMod, installCodeMod);
     context.registerInstaller('derailvalley-ccl', 22, checkIfCustomCar, installCustomCar);
     context.registerInstaller('derailvalley-zsound', 23, checkIfZSound, installZSound);
     context.registerInstaller('derailvalley-skin', 25, checkIfSkin, installSkin);
+    context.registerInstaller('derailvalley-map', 26, checkIfMap, installMap);
 }

@@ -71,3 +71,15 @@ export const ZSOUNDS = {
         return ZS_SOUND_FILES.includes(path.extname(file));
     }
 };
+
+const MAPIFY_DEPENDENCY: IDvDependency = {
+    modId: '593',
+    fileId: '1630',
+    name: 'Mapify'
+}
+export const MAPIFY = {
+    baseDir: 'Mapify',
+    mapsDir: 'Maps',
+    configFile: 'mapinfo.json',
+    dependency: MAPIFY_DEPENDENCY,
+};
