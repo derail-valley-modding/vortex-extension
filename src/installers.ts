@@ -1,5 +1,5 @@
 import path from 'path';
-import { fs, log, types } from 'vortex-api';
+import { fs, types } from 'vortex-api';
 import { IRule } from 'vortex-api/lib/extensions/mod_management/types/IMod';
 import { DV_GAME, SKIN_MANAGER, NUMBER_MANAGER, CCL, ZSOUNDS, MAPIFY, IDvDependency } from './dv_constants';
 
@@ -14,6 +14,18 @@ function containsDvFile(files: string[], searchName: string, gameId: string): Pr
     const supported = (
         (gameId === DV_GAME.nexusId) &&
         (!!files.find(f => path.basename(f).toLowerCase() === searchName))
+    );
+
+    return Promise.resolve({
+        supported,
+        requiredFiles: []
+    });
+}
+
+function containsDvCode(files: string[], gameId: string): Promise<types.ISupportedResult> {
+    const supported = (
+        (gameId === DV_GAME.nexusId) &&
+        (!!files.find(f => path.extname(f).toLowerCase() === DV_GAME.codeModExtension))
     );
 
     return Promise.resolve({
@@ -47,31 +59,74 @@ function addRequirement(instructions: types.IInstruction[], dependency: IDvDepen
     });
 }
 
+function getContentStructure(contentType: string): string[] {
+    return [
+        DV_GAME.contentDir,
+        contentType
+    ];
+}
+
+function extendDestinationFile(fileName: string, targetFolders: string[] = []): string {
+    let newName = fileName;
+    
+    if (newName.startsWith(path.sep)) {
+        newName = newName.substring(1);
+    }
+    
+    if (newName.startsWith(DV_GAME.bepinexDir)) {
+        newName = newName.substring(DV_GAME.bepinexDir.length);
+
+        if (newName !== path.sep) {
+            newName = newName.substring(1);
+        }
+    }
+
+    if (targetFolders.length < 1) {
+        return newName;
+    }
+
+    for (let currentLevel = 0; currentLevel < targetFolders.length; currentLevel++) {
+        if (newName.startsWith(targetFolders[currentLevel])) {
+            // found a matching level, move one level up and append each of the parents
+
+            const parts = targetFolders.slice(0, currentLevel);
+            parts.push(newName);
+
+            return path.join(...parts);
+        }
+    }
+
+    const parts = [...targetFolders];
+    parts.push(newName);
+    return path.join(...parts);
+}
+
 // Default Code Mod
 //---------------------------------------------------------------------------------------------------------------
 function checkIfCodeMod(files: string[], gameId: string): Promise<types.ISupportedResult> {
-    return containsDvFile(files, DV_GAME.codeModConfig, gameId);
+    return containsDvCode(files, gameId);
 }
 
 function installCodeMod(files: string[]) {
-    const jsonFile = files.find(f => path.basename(f).toLowerCase() === DV_GAME.codeModConfig);
-    const baseDir = (typeof(jsonFile) !== 'undefined') ? path.dirname(jsonFile) : '/';
-
-    const filtered = files.filter(file => (file.indexOf(baseDir) !== -1) && (path.extname(file).toLowerCase() !== '.cache'));
+    const filtered = files.filter(file => path.extname(file).toLowerCase() !== '.cache');
 
     const instructions: types.IInstruction[] = [];
     
     // several framework mods contain empty folder trees for content, and we want to preserve these
     for (const file of filtered) {
+        const dest = extendDestinationFile(file);
+
+        if (dest === path.sep) continue;
+
         if (file.endsWith(path.sep)) {
             // make directory
             instructions.push({
                 type: 'mkdir',
-                destination: file
+                destination: dest
             });
             instructions.push({
                 type: 'generatefile',
-                destination: path.join(file, '.placeholder'),
+                destination: path.join(dest, '.placeholder'),
                 data: 'folder placeholder'
             });
         }
@@ -80,14 +135,14 @@ function installCodeMod(files: string[]) {
             instructions.push({
                 type: 'copy',
                 source: file,
-                destination: file
+                destination: dest
             });
         }
     }
 
     instructions.push({
         type: 'setmodtype',
-        value: 'derailvalley-umm'
+        value: 'derailvalley-code'
     });
 
     return Promise.resolve({ instructions });
@@ -109,30 +164,20 @@ function installSkin(files: string[]): Promise<types.IInstallResult> {
     const filtered = files.filter(file => !file.endsWith(path.sep));
     let hasNumberConfig = false;
 
+    const destStructure = [
+        DV_GAME.contentDir,
+        SKIN_MANAGER.skinsDir
+    ]
+
     const instructions: types.IInstruction[] = filtered.map(file => {
-        let dest = '';
+        let dest = file;
         
-
-        // detect if packed for CCL folder instead of skins dir
-        if (file.startsWith(CCL.carsDir)) {
-            log('info', 'Migrating skin mod from CCL folder to Skin Manager');
-
-            const skinDirIdx = file.indexOf(SKIN_MANAGER.skinsDir);
-            const carType = path.basename(file.substring(0, skinDirIdx));
-            const relPathStart = file.indexOf(path.sep, skinDirIdx);
-            const relPath = file.substring(relPathStart);
-
-            dest = path.join(SKIN_MANAGER.baseDir, SKIN_MANAGER.skinsDir, carType, relPath);
-
-        } else {
-            if (file.startsWith(SKIN_MANAGER.skinsDir)) {
-                // already packed inside Skins
-                dest = path.join(SKIN_MANAGER.baseDir, file);
-            } else {
-                // need to add Skins folder to start of paths
-                dest = path.join(SKIN_MANAGER.baseDir, SKIN_MANAGER.skinsDir, file);
-            }
+        // remove legacy skin folder name
+        if (dest.startsWith('Skins')) {
+            dest = file.substring('Skins'.length + 1);
         }
+
+        dest = extendDestinationFile(dest, destStructure);
 
         if (path.basename(file).toLowerCase() === NUMBER_MANAGER.configFile) {
             hasNumberConfig = true;
@@ -186,13 +231,13 @@ async function installCustomCar(files: string[], destinationPath: string): Promi
     let hasBundledSkins = false;
     let hasNumberConfig = false;
 
+    const destStructure = [
+        DV_GAME.contentDir,
+        CCL.carsDir
+    ];
+
     const instructions: types.IInstruction[] = filtered.map(file => {
-        let dest = '';
-        if (!(file.startsWith(CCL.carsDir) || file.startsWith(path.sep + CCL.carsDir))) {
-            dest = path.join(CCL.baseDir, CCL.carsDir, file)
-        } else {
-            dest = path.join(CCL.baseDir, file);
-        }
+        const dest = extendDestinationFile(file, destStructure);
 
         if ((file.indexOf(SKIN_MANAGER.skinsDir) !== -1) && SKIN_MANAGER.isSkinImage(file)) {
             hasBundledSkins = true;
@@ -250,15 +295,10 @@ async function checkIfZSound(files: string[], gameId: string): Promise<types.ISu
 function installZSound(files: string[]): Promise<types.IInstallResult> {
     const filtered = files.filter(file => !file.endsWith(path.sep));
 
-    const instructions: types.IInstruction[] = filtered.map(file => {
-        let targetFile: string;
+    const destStructure = getContentStructure(ZSOUNDS.soundsDir);
 
-        const baseIdx = file.indexOf(ZSOUNDS.baseDir);
-        if (baseIdx !== -1) {
-            targetFile = file.substring(baseIdx);
-        } else {
-            targetFile = path.join(ZSOUNDS.baseDir, file);
-        }
+    const instructions: types.IInstruction[] = filtered.map(file => {
+        const targetFile = extendDestinationFile(file, destStructure);
 
         return {
             type: 'copy',
@@ -302,16 +342,10 @@ async function extractMapifyVersion(jsonFile: string | undefined): Promise<strin
 async function installMap(files: string[], destinationPath: string): Promise<types.IInstallResult> {
     const filtered = files.filter(file => !file.endsWith(path.sep));
 
-    const instructions: types.IInstruction[] = filtered.map(file => {
-        let targetFile: string;
+    const destStructure = getContentStructure(MAPIFY.mapsDir);
 
-        if (file.startsWith(MAPIFY.mapsDir)) {
-            // already packed inside Maps
-            targetFile = path.join(MAPIFY.baseDir, file);
-        } else {
-            // need to add Maps folder to start of paths
-            targetFile = path.join(MAPIFY.baseDir, MAPIFY.mapsDir, file);
-        }
+    const instructions: types.IInstruction[] = filtered.map(file => {
+        const targetFile = extendDestinationFile(file, destStructure);
 
         return {
             type: 'copy',
@@ -337,13 +371,13 @@ async function installMap(files: string[], destinationPath: string): Promise<typ
 }
 
 export function registerModHandlers(context: types.IExtensionContext, getModsDir: () => string): void {
-    context.registerModType('derailvalley-umm', 21, checkGameIsDV, getModsDir, () => Promise.resolve(false), { name: 'Code Mod'});
+    context.registerModType('derailvalley-code', 21, checkGameIsDV, getModsDir, () => Promise.resolve(false), { name: 'Code Mod'});
     context.registerModType('derailvalley-ccl', 22, checkGameIsDV, getModsDir, () => Promise.resolve(false), { name: 'Car/Locomotive'});
     context.registerModType('derailvalley-zsound', 23, checkGameIsDV, getModsDir, () => Promise.resolve(false), { name: 'Sound Replacement'});
     context.registerModType('derailvalley-skin', 25, checkGameIsDV, getModsDir, () => Promise.resolve(false), { name: 'Reskin'});
     context.registerModType('derailvalley-map', 26, checkGameIsDV, getModsDir, () => Promise.resolve(false), { name: 'Map'});
 
-    context.registerInstaller('derailvalley-umm', 21, checkIfCodeMod, installCodeMod);
+    context.registerInstaller('derailvalley-code', 21, checkIfCodeMod, installCodeMod);
     context.registerInstaller('derailvalley-ccl', 22, checkIfCustomCar, installCustomCar);
     context.registerInstaller('derailvalley-zsound', 23, checkIfZSound, installZSound);
     context.registerInstaller('derailvalley-skin', 25, checkIfSkin, installSkin);

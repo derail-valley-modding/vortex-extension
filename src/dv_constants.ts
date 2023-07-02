@@ -1,14 +1,11 @@
 import path from "path";
 
-export const DV_NEXUS_ID = 'derailvalley';
-export const STEAMAPP_ID = '588030';
-export const DV_MODS_DIR = 'Mods';
-
 export const DV_GAME = {
     nexusId: 'derailvalley',
     steamAppId: '588030',
-    baseModsDir: 'Mods',
-    codeModConfig: 'info.json'
+    bepinexDir: 'BepInEx',
+    contentDir: 'content',
+    codeModExtension: '.dll'
 };
 
 export interface IDvDependency {
@@ -24,8 +21,9 @@ const SM_DEPENDENCY: IDvDependency = {
 };
 const SM_IMAGES = ['.jpeg', '.jpg', '.png'];
 export const SKIN_MANAGER = {
-    baseDir: 'SkinManagerMod',
-    skinsDir: 'Skins',
+    baseDir: 'SkinManager',
+    skinsDir: 'skins',
+    legacySkinsDir: 'Skins',
     dependency: SM_DEPENDENCY,
 
     isSkinImage: (file: string) => {
@@ -50,7 +48,7 @@ const CCL_DEPENDENCY: IDvDependency = {
 }
 export const CCL = {
     baseDir: 'DVCustomCarLoader',
-    carsDir: 'Cars',
+    carsDir: 'cars',
     configFile: 'car.json',
     dependency: CCL_DEPENDENCY
 };
@@ -63,7 +61,7 @@ const ZS_DEPENDENCY: IDvDependency = {
 const ZS_SOUND_FILES = ['.ogg', '.wav'];
 export const ZSOUNDS = {
     baseDir: 'ZSounds',
-    soundsDir: 'Sounds',
+    soundsDir: 'sounds',
     configFile: 'zsounds-config.json',
     dependency: ZS_DEPENDENCY,
 
@@ -79,7 +77,7 @@ const MAPIFY_DEPENDENCY: IDvDependency = {
 }
 export const MAPIFY = {
     baseDir: 'Mapify',
-    mapsDir: 'Maps',
-    configFile: 'mapinfo.json',
+    mapsDir: 'maps',
+    configFile: 'mapInfo.json',
     dependency: MAPIFY_DEPENDENCY,
 };
