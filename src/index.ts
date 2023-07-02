@@ -37,6 +37,7 @@ function main(context: types.IExtensionContext) {
             context.api.ext.bepinexAddGame({
                 gameId: DV_GAME.nexusId,
                 autoDownloadBepInEx: true,
+                forceGithubDownload: true
             });
         }
     });
