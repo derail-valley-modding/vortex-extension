@@ -4,6 +4,7 @@ export const DV_GAME = {
     nexusId: 'derailvalley',
     steamAppId: '588030',
     bepinexDir: 'BepInEx',
+    pluginsDir: 'plugins',
     contentDir: 'content',
     codeModExtension: '.dll'
 };

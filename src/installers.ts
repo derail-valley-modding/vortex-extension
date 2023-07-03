@@ -25,7 +25,8 @@ function containsDvFile(files: string[], searchName: string, gameId: string): Pr
 function containsDvCode(files: string[], gameId: string): Promise<types.ISupportedResult> {
     const supported = (
         (gameId === DV_GAME.nexusId) &&
-        (!!files.find(f => path.extname(f).toLowerCase() === DV_GAME.codeModExtension))
+        !!files.find(f => path.extname(f).toLowerCase() === DV_GAME.codeModExtension) &&
+        !files.find(f => path.basename(f) === 'BepInEx.dll')
     );
 
     return Promise.resolve({
@@ -108,36 +109,22 @@ function checkIfCodeMod(files: string[], gameId: string): Promise<types.ISupport
 }
 
 function installCodeMod(files: string[]) {
-    const filtered = files.filter(file => path.extname(file).toLowerCase() !== '.cache');
+    const filtered = files.filter(file => !file.endsWith(path.sep) && (path.extname(file).toLowerCase() !== '.cache'));
 
     const instructions: types.IInstruction[] = [];
+    const destStructure = [
+        DV_GAME.pluginsDir
+    ];
     
-    // several framework mods contain empty folder trees for content, and we want to preserve these
     for (const file of filtered) {
-        const dest = extendDestinationFile(file);
+        const dest = extendDestinationFile(file, destStructure);
 
-        if (dest === path.sep) continue;
-
-        if (file.endsWith(path.sep)) {
-            // make directory
-            instructions.push({
-                type: 'mkdir',
-                destination: dest
-            });
-            instructions.push({
-                type: 'generatefile',
-                destination: path.join(dest, '.placeholder'),
-                data: 'folder placeholder'
-            });
-        }
-        else {
-            // copy file
-            instructions.push({
-                type: 'copy',
-                source: file,
-                destination: dest
-            });
-        }
+        // copy file
+        instructions.push({
+            type: 'copy',
+            source: file,
+            destination: dest
+        });
     }
 
     instructions.push({
