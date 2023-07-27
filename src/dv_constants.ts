@@ -3,10 +3,17 @@ import path from "path";
 export const DV_GAME = {
     nexusId: 'derailvalley',
     steamAppId: '588030',
+
     bepinexDir: 'BepInEx',
-    pluginsDir: 'plugins',
-    contentDir: 'content',
-    codeModExtension: '.dll'
+    bpxContentDir: 'content',
+
+    ummModsDir: 'Mods',
+    ummModConfig: 'info.json',
+    codeModType: 'derailvalley-code',
+
+    isModConfig: (file: string) => {
+        return path.basename(file).toLowerCase() === DV_GAME.ummModConfig;
+    }
 };
 
 export interface IDvDependency {
@@ -22,13 +29,18 @@ const SM_DEPENDENCY: IDvDependency = {
 };
 const SM_IMAGES = ['.jpeg', '.jpg', '.png'];
 export const SKIN_MANAGER = {
-    baseDir: 'SkinManager',
-    skinsDir: 'skins',
-    legacySkinsDir: 'Skins',
+    baseDir: 'SkinManagerMod',
+    skinModType: 'derailvalley-skin',
+    skinConfig: 'skin.json',
+    legacySkinsDir: 'skins',
     dependency: SM_DEPENDENCY,
 
     isSkinImage: (file: string) => {
         return SM_IMAGES.includes(path.extname(file));
+    },
+
+    isSkinConfig: (file: string) => {
+        return path.basename(file).toLowerCase() === SKIN_MANAGER.skinConfig;
     }
 };
 
@@ -39,7 +51,11 @@ const NM_DEPENDENCY: IDvDependency = {
 };
 export const NUMBER_MANAGER = {
     configFile: 'numbering.xml',
-    dependency: NM_DEPENDENCY
+    dependency: NM_DEPENDENCY,
+
+    isNumberConfig: (file: string) => {
+        return path.basename(file).toLowerCase() === NUMBER_MANAGER.configFile;
+    }
 };
 
 const CCL_DEPENDENCY: IDvDependency = {
@@ -79,6 +95,11 @@ const MAPIFY_DEPENDENCY: IDvDependency = {
 export const MAPIFY = {
     baseDir: 'Mapify',
     mapsDir: 'maps',
-    configFile: 'mapInfo.json',
+    mapModType: 'derailvalley-map',
+    configFile: 'mapinfo.json',
     dependency: MAPIFY_DEPENDENCY,
+
+    isMapConfig: (file: string) => {
+        return path.basename(file).toLowerCase() === MAPIFY.configFile;
+    }
 };
