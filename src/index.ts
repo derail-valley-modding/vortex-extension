@@ -4,11 +4,11 @@ import { fs, types, util } from 'vortex-api';
 import { DV_GAME } from './dv_constants';
 import { registerModHandlers } from './installers';
 
-//let missingBepisNotification = undefined;
+let missingUMMNotification = undefined;
 let cachedModsDir = undefined;
 
 function main(context: types.IExtensionContext) {
-    context.requireExtension('modtype-bepinex');
+    context.requireExtension('modtype-umm');
     context.registerGame({
         id: DV_GAME.nexusId,
         name: 'Derail Valley',
@@ -27,17 +27,16 @@ function main(context: types.IExtensionContext) {
         },
 
         queryPath: findGame,
-        queryModPath: () => DV_GAME.bepinexDir,
-        setup: prepareForModding,
+        queryModPath: () => DV_GAME.ummModsDir,
+        setup: (discovery) => prepareForModding(discovery, context.api),
     });
 
-    // ensure that bepinex is installed
+    // ensure that UMM is installed
     context.once(() => {
-        if (context.api.ext.bepinexAddGame !== undefined) {
-            context.api.ext.bepinexAddGame({
+        if (context.api.ext.ummAddGame !== undefined) {
+            context.api.ext.ummAddGame({
                 gameId: DV_GAME.nexusId,
-                autoDownloadBepInEx: true,
-                forceGithubDownload: true
+                autoDownloadUMM: true
             });
         }
     });
@@ -56,9 +55,30 @@ function findGame() {
         .then((game: types.IGameStoreEntry) => game.gamePath);
 }
 
-function prepareForModding(discovery: types.IDiscoveryResult) {
-    cachedModsDir = path.join(discovery.path, DV_GAME.bepinexDir);
-    return fs.ensureDirWritableAsync(cachedModsDir);
+function prepareForModding(discovery: types.IDiscoveryResult, api: types.IExtensionApi) {
+    cachedModsDir = path.join(discovery.path, DV_GAME.ummModsDir);
+    return fs.ensureDirWritableAsync(cachedModsDir)
+    .then(() => checkForUMM(api, discovery.path));
+}
+
+function checkForUMM(api: types.IExtensionApi, gamePath: string) {
+    const ummLibraryPath = path.join(gamePath, 'DerailValley_Data', 'Managed', 'UnityModManager', 'UnityModManager.dll');
+
+    return fs.statAsync(ummLibraryPath)
+    .then(() => {
+        if (typeof(missingUMMNotification) !== 'undefined') {
+            api.dismissNotification(missingUMMNotification);
+        }
+    }, () => {
+        if (typeof(missingUMMNotification) === 'undefined') {
+            missingUMMNotification = api.sendNotification({
+                id: 'umm-missing',
+                type: 'warning',
+                title: 'Unity Mod Manager not installed',
+                message: 'You must run the UMM tool and install it via doorstop proxy to mod Derail Valley.',
+            });
+        }
+    });
 }
 
 export default main;
