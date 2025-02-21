@@ -67,7 +67,7 @@ function extendDestinationFile(fileName: string, targetFolders: string[] = []): 
     }
 
     for (let currentLevel = 0; currentLevel < targetFolders.length; currentLevel++) {
-        if (newName.startsWith(targetFolders[currentLevel])) {
+        if (newName.startsWith(targetFolders[currentLevel] + path.sep)) {
             // found a matching level, move one level up and append each of the parents
 
             const parts = targetFolders.slice(0, currentLevel);
@@ -130,7 +130,7 @@ async function installCodeMod(files: string[], destinationPath: string) {
 
         let dest = file.substring(trimIndex);
         dest = extendDestinationFile(dest, destStructure);
-        //log('info', file + ' -> ' + dest);
+        log('info', file + ' -> ' + dest);
 
         // copy file
         return {
@@ -141,7 +141,7 @@ async function installCodeMod(files: string[], destinationPath: string) {
     });
 
     if (inferredType === SKIN_MANAGER.skinModType) {
-        addRequirement(instructions, SKIN_MANAGER.dependency, '^3.1');
+        addRequirement(instructions, SKIN_MANAGER.dependency, '>=3.1');
         if (hasNumberConfig) {
             addRequirement(instructions, NUMBER_MANAGER.dependency, '*', 'recommends');
         }

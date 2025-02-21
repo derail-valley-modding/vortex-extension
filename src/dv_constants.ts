@@ -24,7 +24,7 @@ export interface IDvDependency {
 
 const SM_DEPENDENCY: IDvDependency = {
     modId: '34',
-    fileId: '1564',
+    fileId: '3097',
     name: 'Skin Manager'
 };
 const SM_IMAGES = ['.jpeg', '.jpg', '.png'];
